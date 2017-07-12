@@ -263,7 +263,7 @@ def create_faster_rcnn_predictor(features, scaled_gt_boxes, dims_input):
                             # reduce_mean(loss_box),
                             name="detection_losses")
 
-    loss = rpn_losses + detection_losses
+    loss = cfg["CNTK"].E2E_RPN_LOSS_WEIGHT * rpn_losses + detection_losses
     pred_error = classification_error(cls_score, label_targets, axis=1)
 
     return loss, pred_error
