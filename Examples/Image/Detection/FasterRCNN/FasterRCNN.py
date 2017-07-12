@@ -45,6 +45,7 @@ from utils.map.map_helpers import evaluate_detections
 from config import cfg
 from od_mb_source import ObjectDetectionMinibatchSource
 from cntk_helpers import regress_rois
+#from cntk import user_function
 #from cntk_debug_single import DebugLayerSingle
 
 ###############################################################
@@ -212,6 +213,7 @@ def clone_model(base_model, from_node_names, to_node_names, clone_method):
 
 def create_fast_rcnn_predictor(conv_out, rois, fc_layers):
     # RCNN
+    #rois = user_function(DebugLayerSingle(rois, debug_name="rois_debug"))
     roi_out = roipooling(conv_out, rois, cntk.MAX_POOLING, (roi_dim, roi_dim), spatial_scale=1/16.0)
     #roi_out = user_function(DebugLayerSingle(roi_out, debug_name="roi_out_debug"))
     fc_out = fc_layers(roi_out)
@@ -222,7 +224,7 @@ def create_fast_rcnn_predictor(conv_out, rois, fc_layers):
     cls_score = plus(times(fc_out, W_pred), b_pred, name='cls_score')
 
     # regression head
-    W_regr = parameter(shape=(4096, num_classes*4), init=normal(scale=0.01))
+    W_regr = parameter(shape=(4096, num_classes*4), init=normal(scale=0.001))
     b_regr = parameter(shape=num_classes*4, init=0)
     bbox_pred = plus(times(fc_out, W_regr), b_regr, name='bbox_regr')
 
@@ -255,7 +257,7 @@ def create_faster_rcnn_predictor(features, scaled_gt_boxes, dims_input):
 
     # loss functions
     loss_cls = cross_entropy_with_softmax(cls_score, label_targets, axis=1)
-    loss_box = SmoothL1Loss(1.0, bbox_pred, bbox_targets, bbox_inside_weights, 1.0)
+    loss_box = SmoothL1Loss(cfg["CNTK"].SIGMA_DET_L1, bbox_pred, bbox_targets, bbox_inside_weights, 1.0)
     detection_losses = plus(reduce_mean(loss_cls),
                             element_times(cfg["CNTK"].LAMBDA_DET_REGR_LOSS, reduce_mean(loss_box)),
                             # reduce_mean(loss_box),
@@ -278,6 +280,12 @@ def create_eval_model(model, image_input, dims_input, rpn_model=None):
     pred_net = roi_fc_layers(conv_out, rpn_rois)
     cls_score = pred_net.outputs[0]
     bbox_regr = pred_net.outputs[1]
+
+    if cfg["TRAIN"].BBOX_NORMALIZE_TARGETS and  cfg["TRAIN"].BBOX_NORMALIZE_TARGETS_PRECOMPUTED:
+        num_boxes = int(bbox_regr.shape[1] / 4)
+        bbox_normalize_means = np.array(cfg["TRAIN"].BBOX_NORMALIZE_MEANS * num_boxes)
+        bbox_normalize_stds = np.array(cfg["TRAIN"].BBOX_NORMALIZE_STDS * num_boxes)
+        bbox_regr = plus(element_times(bbox_regr, bbox_normalize_stds), bbox_normalize_means, name='bbox_regr')
 
     cls_pred = softmax(cls_score, axis=1, name='cls_pred')
     eval_model = combine([cls_pred, rpn_rois, bbox_regr])
@@ -350,6 +358,12 @@ def compute_rpn_proposals(rpn_model, image_input, roi_input, dims_input):
         od_minibatch_source.dims_si: dims_input
     }
 
+    # setting pre- and post-nms top N to training values since buffered proposals are used for further training
+    test_pre = cfg["TEST"].RPN_PRE_NMS_TOP_N
+    test_post = cfg["TEST"].RPN_POST_NMS_TOP_N
+    cfg["TEST"].RPN_PRE_NMS_TOP_N = cfg["TRAIN"].RPN_PRE_NMS_TOP_N
+    cfg["TEST"].RPN_POST_NMS_TOP_N = cfg["TRAIN"].RPN_POST_NMS_TOP_N
+
     buffered_proposals = [None for _ in range(num_images)]
     sample_count = 0
     while sample_count < num_images:
@@ -361,6 +375,10 @@ def compute_rpn_proposals(rpn_model, image_input, roi_input, dims_input):
         sample_count += 1
         if sample_count % 500 == 0:
             print("Buffered proposals for {} samples".format(sample_count))
+
+    # resetting config values to original test values
+    cfg["TEST"].RPN_PRE_NMS_TOP_N = test_pre
+    cfg["TEST"].RPN_POST_NMS_TOP_N = test_post
 
     return buffered_proposals
 
@@ -522,7 +540,7 @@ def train_faster_rcnn_alternating(debug_output=False):
 
         # loss functions
         loss_cls = cross_entropy_with_softmax(cls_score, label_targets, axis=1)
-        loss_box = SmoothL1Loss(1.0, bbox_pred, bbox_targets, bbox_inside_weights, 1.0)
+        loss_box = SmoothL1Loss(cfg["CNTK"].SIGMA_DET_L1, bbox_pred, bbox_targets, bbox_inside_weights, 1.0)
         detection_losses = plus(reduce_mean(loss_cls),
                                 element_times(cfg["CNTK"].LAMBDA_DET_REGR_LOSS, reduce_mean(loss_box)),
                                 #reduce_mean(loss_box),

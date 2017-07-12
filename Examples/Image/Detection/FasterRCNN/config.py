@@ -44,7 +44,9 @@ __C.CNTK.DATASET = "Grocery" # "Grocery" or "Pascal"
 __C.CNTK.BASE_MODEL = "AlexNet" # "VGG16" or "AlexNet"
 __C.CNTK.CONV_BIAS_INIT = 0.0
 __C.CNTK.LAMBDA_RPN_REGR_LOSS = 10.0
-__C.CNTK.LAMBDA_DET_REGR_LOSS = 1.0
+__C.CNTK.LAMBDA_DET_REGR_LOSS = 10.0
+__C.CNTK.SIGMA_RPN_L1 = 3.0
+__C.CNTK.SIGMA_DET_L1 = 1.0
 
 # Learning parameters
 __C.CNTK.L2_REG_WEIGHT = 0.0005
@@ -58,19 +60,18 @@ __C.CNTK.E2E_MAX_EPOCHS = 20
 __C.CNTK.E2E_LR_PER_SAMPLE = [0.001] * 10 + [0.0001] * 10 + [0.00001]
 
 # caffe rpn training: lr = [0.001] * 12 + [0.0001] * 4, momentum = 0.9, weight decay = 0.0005 (cf. stage1_rpn_solver60k80k.pt)
-__C.CNTK.RPN_EPOCHS = 16 # 4 epochs seems enough for CNTK (old code)
+__C.CNTK.RPN_EPOCHS = 16
 __C.CNTK.RPN_LR_PER_SAMPLE = [0.001] * 12 + [0.0001] * 4
 
 # caffe frcn training: lr = [0.001] * 6 + [0.0001] * 2, momentum = 0.9, weight decay = 0.0005 (cf. stage1_fast_rcnn_solver30k40k.pt)
-__C.CNTK.FRCN_EPOCHS = 20 # 8 # 20 rather for CNTK (old code)
-__C.CNTK.FRCN_LR_PER_SAMPLE = [0.001] * 6 + [0.0001] * 2
-# Old code:
+#__C.CNTK.FRCN_EPOCHS = 8
+#__C.CNTK.FRCN_LR_PER_SAMPLE = [0.001] * 6 + [0.0001] * 2
 # Current setting for CNTK AlexNet:
+__C.CNTK.FRCN_EPOCHS = 20
+__C.CNTK.FRCN_LR_PER_SAMPLE = [0.001] * 6 + [0.0005] * 6 + [0.0001]
+# Current setting for CNTK VGG16: ... pending, CUDA OOM
 #__C.CNTK.FRCN_EPOCHS = 20
-#__C.CNTK.FRCN_LR_PER_SAMPLE = [0.001] * 8 + [0.0005] * 8 + [0.0001] # --> FRCN_LR_FACTOR = 0.01
-# Current setting for CNTK VGG16:
-#__C.CNTK.FRCN_EPOCHS = 20
-#__C.CNTK.FRCN_LR_PER_SAMPLE = [0.0000005] * 8 + [0.00000005] --> FRCN_LR_FACTOR = 0.0005
+#__C.CNTK.FRCN_LR_PER_SAMPLE =
 
 __C.CNTK.INPUT_ROIS_PER_IMAGE = 50
 __C.CNTK.IMAGE_WIDTH = 850
@@ -132,9 +133,9 @@ if __C.CNTK.BASE_MODEL == "AlexNet":
     __C.CNTK.LAST_HIDDEN_NODE_NAME = "h2_d"
     __C.CNTK.RPN_NUM_CHANNELS = 256
     __C.CNTK.ROI_DIM = 6
-    __C.CNTK.E2E_LR_FACTOR = 10.0
-    __C.CNTK.RPN_LR_FACTOR = 100.0
-    __C.CNTK.FRCN_LR_FACTOR = 20.0
+    __C.CNTK.E2E_LR_FACTOR = 10.0 # 76.x % mAP
+    __C.CNTK.RPN_LR_FACTOR = 300.0
+    __C.CNTK.FRCN_LR_FACTOR = 10.0
 
 if __C.CNTK.BASE_MODEL == "VGG16":
     __C.CNTK.BASE_MODEL_FILE = "VGG16_ImageNet_Caffe.model" # == "VGG16_ImageNet.cntkmodel"
@@ -145,8 +146,8 @@ if __C.CNTK.BASE_MODEL == "VGG16":
     __C.CNTK.LAST_HIDDEN_NODE_NAME = "drop7"
     __C.CNTK.RPN_NUM_CHANNELS = 512
     __C.CNTK.ROI_DIM = 7
-    __C.CNTK.E2E_LR_FACTOR = 1.0
-    __C.CNTK.RPN_LR_FACTOR = 1.0
+    __C.CNTK.E2E_LR_FACTOR = 10.0 # 50.7% mAP
+    __C.CNTK.RPN_LR_FACTOR = 30.0
     __C.CNTK.FRCN_LR_FACTOR = 1.0
 
 #
@@ -206,7 +207,7 @@ __C.TRAIN.BBOX_NORMALIZE_TARGETS = True
 __C.TRAIN.BBOX_INSIDE_WEIGHTS = (1.0, 1.0, 1.0, 1.0)
 # Normalize the targets using "precomputed" (or made up) means and stdevs
 # (BBOX_NORMALIZE_TARGETS must also be True)
-__C.TRAIN.BBOX_NORMALIZE_TARGETS_PRECOMPUTED = False
+__C.TRAIN.BBOX_NORMALIZE_TARGETS_PRECOMPUTED = True # TODO: do these means make sense for other data sets than Pascal?
 __C.TRAIN.BBOX_NORMALIZE_MEANS = (0.0, 0.0, 0.0, 0.0)
 __C.TRAIN.BBOX_NORMALIZE_STDS = (0.1, 0.1, 0.2, 0.2)
 
@@ -277,9 +278,9 @@ __C.TEST.PROPOSAL_METHOD = 'selective_search'
 ## NMS threshold used on RPN proposals
 __C.TEST.RPN_NMS_THRESH = 0.7
 ## Number of top scoring boxes to keep before apply NMS to RPN proposals
-__C.TEST.RPN_PRE_NMS_TOP_N = 12000 # caffe: 6000
+__C.TEST.RPN_PRE_NMS_TOP_N = 6000 # 12000 # caffe: 6000
 ## Number of top scoring boxes to keep after applying NMS to RPN proposals
-__C.TEST.RPN_POST_NMS_TOP_N = 2000 # caffe: 300
+__C.TEST.RPN_POST_NMS_TOP_N = 300 # 2000 # caffe: 300
 # Proposal height and width both need to be greater than RPN_MIN_SIZE (at orig image scale)
 __C.TEST.RPN_MIN_SIZE = 16
 
