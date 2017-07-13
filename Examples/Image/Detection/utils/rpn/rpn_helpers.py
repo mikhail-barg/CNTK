@@ -6,7 +6,7 @@
 
 import numpy as np
 import cntk as C
-from cntk import reduce_mean
+from cntk import reduce_sum
 from cntk import user_function, relu, softmax, slice, splice, reshape, element_times, plus, minus, alias, classification_error
 from cntk.initializer import glorot_uniform, normal
 from cntk.layers import Convolution
@@ -97,13 +97,12 @@ def create_rpn(conv_out, scaled_gt_boxes, im_info, add_loss_functions=True,
             rpn_loss_cls = element_times(rpn_ce, keeps)
 
         rpn_loss_bbox = SmoothL1Loss(cfg["CNTK"].SIGMA_RPN_L1, rpn_bbox_pred, rpn_bbox_targets, rpn_bbox_inside_weights, 1.0)
-        rpn_losses = plus(reduce_mean(rpn_loss_cls),
-                          element_times(cfg["CNTK"].LAMBDA_RPN_REGR_LOSS, reduce_mean(rpn_loss_bbox)),
-                          #reduce_mean(rpn_loss_bbox),
+        rpn_losses = plus(reduce_sum(rpn_loss_cls),
+                          element_times(cfg["CNTK"].LAMBDA_RPN_REGR_LOSS, reduce_sum(rpn_loss_bbox)),
+                          #reduce_sum(rpn_loss_bbox),
                           name="rpn_losses")
-        rpn_pred_error = classification_error(rpn_cls_score_rshp, rpn_labels_ignore, axis=0, name="rpn_pred_error")
 
-    return rpn_rois, rpn_losses, rpn_pred_error
+    return rpn_rois, rpn_losses
 
 def create_proposal_target_layer(rpn_rois, scaled_gt_boxes, num_classes):
     '''

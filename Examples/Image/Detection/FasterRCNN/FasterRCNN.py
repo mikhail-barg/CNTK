@@ -10,7 +10,7 @@ import numpy as np
 import os, sys
 import argparse
 import cntk
-from cntk import reduce_mean
+from cntk import reduce_sum
 from cntk import Trainer, UnitType, load_model, Axis, input_variable, parameter, times, combine, \
     softmax, roipooling, plus, element_times, CloneMethod, alias, Communicator
 from cntk.core import Value
@@ -246,7 +246,7 @@ def create_faster_rcnn_predictor(features, scaled_gt_boxes, dims_input):
     conv_out = conv_layers(feat_norm)
 
     # RPN
-    rpn_rois, rpn_losses, _ = create_rpn(conv_out, scaled_gt_boxes, dims_input,
+    rpn_rois, rpn_losses = create_rpn(conv_out, scaled_gt_boxes, dims_input,
                                       proposal_layer_param_string=cfg["CNTK"].PROPOSAL_LAYER_PARAMS,
                                       conv_bias_init=cfg["CNTK"].CONV_BIAS_INIT)
     rois, label_targets, bbox_targets, bbox_inside_weights = \
@@ -258,9 +258,9 @@ def create_faster_rcnn_predictor(features, scaled_gt_boxes, dims_input):
     # loss functions
     loss_cls = cross_entropy_with_softmax(cls_score, label_targets, axis=1)
     loss_box = SmoothL1Loss(cfg["CNTK"].SIGMA_DET_L1, bbox_pred, bbox_targets, bbox_inside_weights, 1.0)
-    detection_losses = plus(reduce_mean(loss_cls),
-                            element_times(cfg["CNTK"].LAMBDA_DET_REGR_LOSS, reduce_mean(loss_box)),
-                            # reduce_mean(loss_box),
+    detection_losses = plus(reduce_sum(loss_cls),
+                            element_times(cfg["CNTK"].LAMBDA_DET_REGR_LOSS, reduce_sum(loss_box)),
+                            # reduce_sum(loss_box),
                             name="detection_losses")
 
     loss = cfg["CNTK"].E2E_RPN_LOSS_WEIGHT * rpn_losses + detection_losses
@@ -494,14 +494,14 @@ def train_faster_rcnn_alternating(debug_output=False):
         #conv_out = conv_layers(feat_norm)
 
         # RPN and losses
-        rpn_rois, rpn_losses, rpn_pred_error = create_rpn(conv_out, scaled_gt_boxes, dims_node,
+        rpn_rois, rpn_losses = create_rpn(conv_out, scaled_gt_boxes, dims_node,
                                           proposal_layer_param_string=cfg["CNTK"].PROPOSAL_LAYER_PARAMS,
                                           conv_bias_init=cfg["CNTK"].CONV_BIAS_INIT)
-        stage1_rpn_network = combine([rpn_rois, rpn_losses, rpn_pred_error])
+        stage1_rpn_network = combine([rpn_rois, rpn_losses])
 
         # train
         if debug_output: plot(stage1_rpn_network, os.path.join(globalvars['output_path'], "graph_frcn_train_stage1a_rpn." + cfg["CNTK"].GRAPH_TYPE))
-        train_model(image_input, roi_input, dims_input, rpn_losses, rpn_pred_error,
+        train_model(image_input, roi_input, dims_input, rpn_losses, rpn_losses,
                     rpn_lr_schedule, mm_schedule, l2_reg_weight, epochs_to_train=rpn_epochs)
 
     print("stage 1a - buffering rpn proposals")
@@ -541,9 +541,9 @@ def train_faster_rcnn_alternating(debug_output=False):
         # loss functions
         loss_cls = cross_entropy_with_softmax(cls_score, label_targets, axis=1)
         loss_box = SmoothL1Loss(cfg["CNTK"].SIGMA_DET_L1, bbox_pred, bbox_targets, bbox_inside_weights, 1.0)
-        detection_losses = plus(reduce_mean(loss_cls),
-                                element_times(cfg["CNTK"].LAMBDA_DET_REGR_LOSS, reduce_mean(loss_box)),
-                                #reduce_mean(loss_box),
+        detection_losses = plus(reduce_sum(loss_cls),
+                                element_times(cfg["CNTK"].LAMBDA_DET_REGR_LOSS, reduce_sum(loss_box)),
+                                #reduce_sum(loss_box),
                                 name="detection_losses")
         pred_error = classification_error(cls_score, label_targets, axis=1, name="pred_error")
         stage1_frcn_network = combine([rois, cls_score, bbox_pred, detection_losses, pred_error])
@@ -569,17 +569,16 @@ def train_faster_rcnn_alternating(debug_output=False):
 
         # RPN and losses
         rpn = clone_model(stage1_rpn_network, [last_conv_node_name, "roi_input", "dims_input"],
-                          ["rpn_rois", "rpn_losses", "rpn_pred_error"], CloneMethod.clone)
+                          ["rpn_rois", "rpn_losses"], CloneMethod.clone)
         ## !!! the order of the inputs here is different compared to the order of the names given to 'clone_model' !!!
         rpn_net = rpn(conv_out, dims_node, scaled_gt_boxes)
         rpn_rois = rpn_net.outputs[0]
         rpn_losses = rpn_net.outputs[1]
-        rpn_pred_error = rpn_net.outputs[2]
         stage2_rpn_network = combine([rpn_rois, rpn_losses])
 
         # train
         if debug_output: plot(stage2_rpn_network, os.path.join(globalvars['output_path'], "graph_frcn_train_stage2a_rpn." + cfg["CNTK"].GRAPH_TYPE))
-        train_model(image_input, roi_input, dims_input, rpn_losses, rpn_pred_error,
+        train_model(image_input, roi_input, dims_input, rpn_losses, rpn_losses,
                     rpn_lr_schedule, mm_schedule, l2_reg_weight, epochs_to_train=rpn_epochs)
 
     print("stage 2a - buffering rpn proposals")

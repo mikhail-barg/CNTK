@@ -35,7 +35,7 @@ __C.CNTK = edict()
 
 __C.CNTK.FAST_MODE = False
 __C.CNTK.MAKE_MODE = False
-__C.CNTK.TRAIN_E2E = False
+__C.CNTK.TRAIN_E2E = True
 __C.CNTK.DEBUG_OUTPUT = True
 __C.CNTK.USE_MEAN_GRADIENT = False
 __C.CNTK.TRAIN_CONV_LAYERS = False
@@ -43,11 +43,11 @@ __C.CNTK.TRAIN_CONV_LAYERS = False
 __C.CNTK.DATASET = "Grocery" # "Grocery" or "Pascal"
 __C.CNTK.BASE_MODEL = "AlexNet" # "VGG16" or "AlexNet"
 __C.CNTK.CONV_BIAS_INIT = 0.0
-__C.CNTK.LAMBDA_RPN_REGR_LOSS = 10.0
-__C.CNTK.LAMBDA_DET_REGR_LOSS = 10.0
+__C.CNTK.LAMBDA_RPN_REGR_LOSS = 1.0
+__C.CNTK.LAMBDA_DET_REGR_LOSS = 1.0
 __C.CNTK.SIGMA_RPN_L1 = 3.0
 __C.CNTK.SIGMA_DET_L1 = 1.0
-__C.CNTK.E2E_RPN_LOSS_WEIGHT = 16.0 # try 16 (close to 2000/128)
+__C.CNTK.E2E_RPN_LOSS_WEIGHT = 1.0
 
 # Learning parameters
 __C.CNTK.L2_REG_WEIGHT = 0.0005
@@ -66,10 +66,10 @@ __C.CNTK.RPN_LR_PER_SAMPLE = [0.001] * 12 + [0.0001] * 4
 
 # caffe frcn training: lr = [0.001] * 6 + [0.0001] * 2, momentum = 0.9, weight decay = 0.0005 (cf. stage1_fast_rcnn_solver30k40k.pt)
 #__C.CNTK.FRCN_EPOCHS = 8
-#__C.CNTK.FRCN_LR_PER_SAMPLE = [0.001] * 6 + [0.0001] * 2
+__C.CNTK.FRCN_LR_PER_SAMPLE = [0.001] * 6 + [0.0001] * 2
 # Current setting for CNTK AlexNet:
 __C.CNTK.FRCN_EPOCHS = 20
-__C.CNTK.FRCN_LR_PER_SAMPLE = [0.001] * 6 + [0.0005] * 6 + [0.0001]
+#__C.CNTK.FRCN_LR_PER_SAMPLE = [0.001] * 6 + [0.0005] * 6 + [0.0001]
 # Current setting for CNTK VGG16: ... pending, CUDA OOM
 #__C.CNTK.FRCN_EPOCHS = 20
 #__C.CNTK.FRCN_LR_PER_SAMPLE =
@@ -134,9 +134,11 @@ if __C.CNTK.BASE_MODEL == "AlexNet":
     __C.CNTK.LAST_HIDDEN_NODE_NAME = "h2_d"
     __C.CNTK.RPN_NUM_CHANNELS = 256
     __C.CNTK.ROI_DIM = 6
-    __C.CNTK.E2E_LR_FACTOR = 10.0 # 96.9 % mAP with E2E_RPN_LOSS_WEIGHT = 16.0
-    __C.CNTK.RPN_LR_FACTOR = 160.0 # 94.8 % mAP (300.0) 93.0% (160) # TODO: try 16*10 (close to 2000/128)*10
-    __C.CNTK.FRCN_LR_FACTOR = 10.0
+    # 0.1: 95.63|85.7||92.8|96.7 --- det: 3: 90.07|91.98|93.54
+    __C.CNTK.E2E_LR_FACTOR = 0.1
+    # 0.1|0.1: 92.0, 0.1|0.05: 92.5, 0.1|0.01: 88.6
+    __C.CNTK.RPN_LR_FACTOR = 0.1
+    __C.CNTK.FRCN_LR_FACTOR = 0.1
 
 if __C.CNTK.BASE_MODEL == "VGG16":
     __C.CNTK.BASE_MODEL_FILE = "VGG16_ImageNet_Caffe.model" # == "VGG16_ImageNet.cntkmodel"
@@ -147,9 +149,11 @@ if __C.CNTK.BASE_MODEL == "VGG16":
     __C.CNTK.LAST_HIDDEN_NODE_NAME = "drop7"
     __C.CNTK.RPN_NUM_CHANNELS = 512
     __C.CNTK.ROI_DIM = 7
-    __C.CNTK.E2E_LR_FACTOR = 10.0 # 92.5 % mAP with E2E_RPN_LOSS_WEIGHT = 16.0
-    __C.CNTK.RPN_LR_FACTOR = 30.0
-    __C.CNTK.FRCN_LR_FACTOR = 1.0
+    # 0.1: nan, 0.01: 94.8|94.8
+    __C.CNTK.E2E_LR_FACTOR = 0.01
+    # Cuda OOM
+    __C.CNTK.RPN_LR_FACTOR = 0.01
+    __C.CNTK.FRCN_LR_FACTOR = 0.01
 
 #
 # Training options
