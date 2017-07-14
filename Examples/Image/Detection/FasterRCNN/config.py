@@ -63,11 +63,11 @@ __C.CNTK.RPN_EPOCHS = 16 # 12 + 16 ?
 __C.CNTK.RPN_LR_PER_SAMPLE = [0.001] * 12 + [0.0001] * 4
 
 # caffe frcn training: lr = [0.001] * 6 + [0.0001] * 2, momentum = 0.9, weight decay = 0.0005 (cf. stage1_fast_rcnn_solver30k40k.pt)
-#__C.CNTK.FRCN_EPOCHS = 8 # 6 + 8 ?
-#__C.CNTK.FRCN_LR_PER_SAMPLE = [0.001] * 6 + [0.0001] * 2
+__C.CNTK.FRCN_EPOCHS = 8 # 6 + 8 ?
+__C.CNTK.FRCN_LR_PER_SAMPLE = [0.001] * 6 + [0.0001] * 2
 # Current setting for CNTK:
-__C.CNTK.FRCN_EPOCHS = 20
-__C.CNTK.FRCN_LR_PER_SAMPLE = [0.001] * 6 + [0.0005] * 6 + [0.0001]
+#__C.CNTK.FRCN_EPOCHS = 20
+#__C.CNTK.FRCN_LR_PER_SAMPLE = [0.001] * 6 + [0.0005] * 6 + [0.0001]
 
 __C.CNTK.INPUT_ROIS_PER_IMAGE = 50
 __C.CNTK.IMAGE_WIDTH = 850

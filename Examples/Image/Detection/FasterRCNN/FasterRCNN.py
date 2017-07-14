@@ -245,10 +245,6 @@ def create_fast_rcnn_predictor(conv_out, rois, fc_layers):
 def create_faster_rcnn_predictor(features, scaled_gt_boxes, dims_input):
     # Load the pre-trained classification net and clone layers
     base_model = load_model(base_model_file)
-
-    #if cfg["CNTK"].DEBUG_OUTPUT:
-    #    plot(base_model, os.path.join(globalvars['output_path'], "graph_base_model.{}".format(cfg["CNTK"].GRAPH_TYPE)))
-
     conv_layers = clone_conv_layers(base_model)
     fc_layers = clone_model(base_model, [pool_node_name], [last_hidden_node_name], clone_method=CloneMethod.clone)
 
@@ -264,7 +260,6 @@ def create_faster_rcnn_predictor(features, scaled_gt_boxes, dims_input):
 
     # Fast RCNN
     cls_score, bbox_pred = create_fast_rcnn_predictor(conv_out, rois, fc_layers)
-
     detection_losses = create_detection_losses(cls_score, label_targets,
                                                rois, bbox_pred, bbox_targets, bbox_inside_weights)
 
@@ -339,7 +334,8 @@ def train_model(image_input, roi_input, dims_input, loss, pred_error,
         loss = combine([loss])
 
     params = loss.parameters
-    biases = [p for p in params if '.b' in str(p) or "'b'" in str(p)]
+    #biases = [p for p in params if '.b' in str(p) or "'b'" in str(p)]
+    biases = [p for p in params if '.b' in p.name or 'b' == p.name]
     others = [p for p in params if not p in biases]
     bias_lr_mult = cfg["CNTK"].BIAS_LR_MULT
 
