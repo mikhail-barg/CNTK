@@ -213,6 +213,17 @@ def clone_model(base_model, from_node_names, to_node_names, clone_method):
     cloned_net = combine(to_nodes).clone(clone_method, input_placeholders)
     return cloned_net
 
+def clone_conv_layers(base_model):
+    if not globalvars['train_conv']:
+        conv_layers = clone_model(base_model, [feature_node_name], [last_conv_node_name], CloneMethod.freeze)
+    else:
+        fixed_conv_layers = clone_model(base_model, [feature_node_name], [start_train_conv_node_name],
+                                        CloneMethod.freeze)
+        train_conv_layers = clone_model(base_model, [start_train_conv_node_name], [last_conv_node_name],
+                                        CloneMethod.clone)
+        conv_layers = Sequential([fixed_conv_layers, train_conv_layers])
+    return conv_layers
+
 def create_fast_rcnn_predictor(conv_out, rois, fc_layers):
     # RCNN
     roi_out = roipooling(conv_out, rois, cntk.MAX_POOLING, (roi_dim, roi_dim), spatial_scale=1/16.0)
@@ -238,7 +249,7 @@ def create_faster_rcnn_predictor(features, scaled_gt_boxes, dims_input):
     #if cfg["CNTK"].DEBUG_OUTPUT:
     #    plot(base_model, os.path.join(globalvars['output_path'], "graph_base_model.{}".format(cfg["CNTK"].GRAPH_TYPE)))
 
-    conv_layers = clone_model(base_model, [feature_node_name], [last_conv_node_name], clone_method=CloneMethod.freeze)
+    conv_layers = clone_conv_layers(base_model)
     fc_layers = clone_model(base_model, [pool_node_name], [last_hidden_node_name], clone_method=CloneMethod.clone)
 
     # Normalization and conv layers
@@ -525,17 +536,8 @@ def train_faster_rcnn_alternating(debug_output=False):
             # frcn: -                   -
 
         # conv layers
-        if not globalvars['train_conv']:
-            conv_layers = clone_model(base_model, [feature_node_name], [last_conv_node_name], clone_method=CloneMethod.freeze)
-            conv_out = conv_layers(feat_norm)
-        else:
-            fixed_conv_layers = clone_model(base_model, [feature_node_name], [start_train_conv_node_name], clone_method=CloneMethod.freeze)
-            train_conv_layers = clone_model(base_model, [start_train_conv_node_name], [last_conv_node_name], clone_method=CloneMethod.clone)
-            # TODO: it would be nicer to use Sequential(), but then the node name cannot be found in subsequent cloning currently
-            # conv_layers = Sequential(fixed_conv_layers, train_conv_layers)
-            conv_out_f = fixed_conv_layers(feat_norm)
-            conv_out = train_conv_layers(conv_out_f)
-        #conv_out = conv_layers(feat_norm)
+        conv_layers = clone_conv_layers(base_model)
+        conv_out = conv_layers(feat_norm)
 
         # RPN and losses
         rpn_rois, rpn_losses = create_rpn(conv_out, scaled_gt_boxes, dims_node,
@@ -561,17 +563,8 @@ def train_faster_rcnn_alternating(debug_output=False):
             # frcn: base_model + new    yes
 
         # conv_layers
-        if not globalvars['train_conv']:
-            conv_layers = clone_model(base_model, [feature_node_name], [last_conv_node_name], CloneMethod.freeze)
-            conv_out = conv_layers(feat_norm)
-        else:
-            fixed_conv_layers = clone_model(base_model, [feature_node_name], [start_train_conv_node_name], CloneMethod.freeze)
-            train_conv_layers = clone_model(base_model, [start_train_conv_node_name], [last_conv_node_name], CloneMethod.clone)
-            # TODO: it would be nicer to use Sequential(), but then the node name cannot be found in subsequent cloning
-            # conv_layers = Sequential(fixed_conv_layers, train_conv_layers)
-            conv_out_f = fixed_conv_layers(feat_norm)
-            conv_out = train_conv_layers(conv_out_f)
-        # conv_out = conv_layers(feat_norm)
+        conv_layers = clone_conv_layers(base_model)
+        conv_out = conv_layers(feat_norm)
 
         # use buffered proposals in target layer
         rois, label_targets, bbox_targets, bbox_inside_weights = \

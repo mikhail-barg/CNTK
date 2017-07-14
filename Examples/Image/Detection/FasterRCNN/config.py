@@ -38,11 +38,11 @@ __C.CNTK.FAST_MODE = False
 __C.CNTK.MAKE_MODE = False
 __C.CNTK.TRAIN_E2E = True
 __C.CNTK.DEBUG_OUTPUT = True
-__C.CNTK.USE_MEAN_GRADIENT = False
-__C.CNTK.TRAIN_CONV_LAYERS = False
+__C.CNTK.USE_MEAN_GRADIENT = True
+__C.CNTK.TRAIN_CONV_LAYERS = True
 
 __C.CNTK.DATASET = "Grocery" # "Grocery" or "Pascal"
-__C.CNTK.BASE_MODEL = "VGG16" # "VGG16" or "AlexNet"
+__C.CNTK.BASE_MODEL = "AlexNet" # "VGG16" or "AlexNet"
 __C.CNTK.CONV_BIAS_INIT = 0.0
 __C.CNTK.SIGMA_RPN_L1 = 3.0
 __C.CNTK.SIGMA_DET_L1 = 1.0
@@ -129,7 +129,7 @@ if __C.CNTK.BASE_MODEL == "AlexNet":
     __C.CNTK.LAST_HIDDEN_NODE_NAME = "h2_d"
     __C.CNTK.RPN_NUM_CHANNELS = 256
     __C.CNTK.ROI_DIM = 6
-    # 1.0: 84.17|88.85|79.79|86.25|84.9 --- det: 89.64|89.64
+    # 1.0: 84.17|88.85|79.79|86.25|84.9 --- det: 89.64|89.64 --- mean grad: 89.64 --- conv layers: 75.10
     __C.CNTK.E2E_LR_FACTOR = 1.0
     # 1.0: 85.83|85.27|94.10|94.06 --- det: 89.06
     __C.CNTK.RPN_LR_FACTOR = 1.0
@@ -144,7 +144,7 @@ if __C.CNTK.BASE_MODEL == "VGG16":
     __C.CNTK.LAST_HIDDEN_NODE_NAME = "drop7"
     __C.CNTK.RPN_NUM_CHANNELS = 512
     __C.CNTK.ROI_DIM = 7
-    # det:
+    # det: 90.48
     __C.CNTK.E2E_LR_FACTOR = 1.0
     # Cuda OOM
     __C.CNTK.RPN_LR_FACTOR = 1.0
