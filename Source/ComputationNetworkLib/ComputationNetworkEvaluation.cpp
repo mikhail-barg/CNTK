@@ -408,6 +408,12 @@ void ComputationNetwork::ResetEvalTimeStamps()
         nodeIter->second->ResetEvalTimeStamp();
 }
 
+void ComputationNetwork::SetEvalTimeStampsOutdatedWrtAll()
+{
+    for (auto nodeIter = m_nameToNodeMap.begin(); nodeIter != m_nameToNodeMap.end(); nodeIter++)
+        nodeIter->second->SetEvalTimeStampOutdatedWrtAll();
+}
+
 /*static*/ void ComputationNetwork::BumpEvalTimeStamp(const vector<ComputationNodeBasePtr>& nodes)
 {
     for (size_t i = 0; i < nodes.size(); i++)

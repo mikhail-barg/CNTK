@@ -1315,6 +1315,7 @@ namespace CNTK
         computationNetwork->SetTrackGapNans(GetCheckedMode());
         computationNetwork->SetIsV2Library(true);
         computationNetwork->CompileNetwork();
+        computationNetwork->SetEvalTimeStampsOutdatedWrtAll();
 
         // Verify that the shapes of the output Variables that we computed match the corresponding nodes in the ComputationNetwork
         for (auto varNodePair : variableToNodeMap)
