@@ -408,7 +408,11 @@ void ComputationNetwork::ResetEvalTimeStamps()
         nodeIter->second->ResetEvalTimeStamp();
 }
 
-void ComputationNetwork::SetEvalTimeStampsOutdatedWrtAll()
+// Set EvalTimeStamp of all nodes as outdated, so that each node will be evaluated at least once.
+// The ResetEvalTimeStamps() above cannot do the work, since it only (re)sets the node to the current
+// global timestamp, which could be updated by other threads, so that the nodes of the network might
+// have different timestamps and the nodes with a higher timestamps are not treated as "outdated".
+void ComputationNetwork::SetAllEvalTimeStampsOutdated()
 {
     for (auto nodeIter = m_nameToNodeMap.begin(); nodeIter != m_nameToNodeMap.end(); nodeIter++)
         nodeIter->second->SetEvalTimeStampOutdatedWrtAll();

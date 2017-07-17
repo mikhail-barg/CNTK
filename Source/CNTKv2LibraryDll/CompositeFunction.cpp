@@ -1315,7 +1315,10 @@ namespace CNTK
         computationNetwork->SetTrackGapNans(GetCheckedMode());
         computationNetwork->SetIsV2Library(true);
         computationNetwork->CompileNetwork();
-        computationNetwork->SetEvalTimeStampsOutdatedWrtAll();
+        // Set EvalTimeStamp of all nodes in the network as "outdated" to make sure that all nodes will be evalauted at least once.
+        // During CompilerNetwork(), nodes in the network might get different timestamp values because other threads could update the global timestamp value.
+        // The nodes with a higher timestamp value are thus incorrectly treated as "updated", and their inputs are not further evalauted by ComputationNetwork::PARTraversalFlowControlNode::ForwardProp().
+        computationNetwork->SetAllEvalTimeStampsOutdated();
 
         // Verify that the shapes of the output Variables that we computed match the corresponding nodes in the ComputationNetwork
         for (auto varNodePair : variableToNodeMap)
